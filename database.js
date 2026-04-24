@@ -1,13 +1,14 @@
 const Database = require('better-sqlite3');
 const db = new Database('school.db');
 
-// 1. Մաքրում և ստեղծում ենք աղյուսակները
 db.exec(`
   DROP TABLE IF EXISTS attendance;
   DROP TABLE IF EXISTS students;
   DROP TABLE IF EXISTS classes;
   DROP TABLE IF EXISTS subjects;
+  DROP TABLE IF EXISTS users;
 
+  CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, password TEXT);
   CREATE TABLE classes (id INTEGER PRIMARY KEY, name TEXT);
   CREATE TABLE subjects (id INTEGER PRIMARY KEY, name TEXT);
   
@@ -30,7 +31,7 @@ db.exec(`
   );
 `);
 
-// 2. Ավելացնում ենք դասարանները (1-ից 12, Ա և Բ զուգահեռներով)
+// Ստեղծում ենք դասարաններ 1-12 (Ա և Բ զուգահեռներով)
 const insertClass = db.prepare("INSERT INTO classes (name) VALUES (?)");
 const classIds = [];
 for (let i = 1; i <= 12; i++) {
@@ -38,36 +39,30 @@ for (let i = 1; i <= 12; i++) {
     classIds.push(insertClass.run(`${i}Բ`).lastInsertRowid);
 }
 
-// 3. Գեներացնում ենք 475 աշակերտ և բաշխում դասարանների միջև (մաքսիմում 20 հոգի)
+// Գեներացնում ենք 475 աշակերտ
 const namesM = ['Արամ', 'Հայկ', 'Տիգրան', 'Գոռ', 'Արթուր', 'Կարեն', 'Դավիթ', 'Էրիկ', 'Սամվել', 'Վահե', 'Արմեն', 'Ռոբերտ', 'Աշոտ', 'Ալեն', 'Գուրգեն', 'Լևոն', 'Արտակ', 'Վիգեն', 'Սուրեն', 'Հովհաննես'];
 const namesF = ['Անի', 'Մարիամ', 'Էլեն', 'Լիլիթ', 'Նարե', 'Սոնա', 'Մանե', 'Անահիտ', 'Լուսինե', 'Գայանե', 'Ալիսա', 'Տաթևիկ', 'Քրիստինե', 'Մարիա', 'Շուշան', 'Ռուզաննա', 'Իրինա', 'Սյուզաննա', 'Անժելա', 'Միլենա'];
 const surnames = ['Գրիգորյան', 'Մարտիրոսյան', 'Վարդանյան', 'Հովհաննիսյան', 'Սարգսյան', 'Ավետիսյան', 'Խաչատրյան', 'Նազարյան', 'Դավթյան', 'Գևորգյան', 'Մինասյան', 'Հակոբյան', 'Պետրոսյան', 'Թորոսյան', 'Բաղդասարյան', 'Ղազարյան', 'Ալեքսանյան', 'Միրզոյան', 'Կարապետյան', 'Մելքոնյան', 'Ստեփանյան', 'Պողոսյան', 'Արզումանյան', 'Սիմոնյան', 'Երիցյան'];
 
 const insertStudent = db.prepare("INSERT INTO students (name, surname, patronymic, class_id) VALUES (?, ?, ?, ?)");
 
-let currentClassIndex = 0;
-let studentsInCurrentClass = 0;
+let currentClassIdx = 0;
+let countInClass = 0;
 
 for (let i = 0; i < 475; i++) {
     const isMale = Math.random() > 0.5;
     const firstName = isMale ? namesM[Math.floor(Math.random() * namesM.length)] : namesF[Math.floor(Math.random() * namesF.length)];
     const lastName = surnames[Math.floor(Math.random() * surnames.length)];
-    const fatherName = namesM[Math.floor(Math.random() * namesM.length)] + "ի";
+    const patro = namesM[Math.floor(Math.random() * namesM.length)] + "ի";
 
-    // Եթե դասարանը լցվեց (20 հոգի), անցնում ենք հաջորդին
-    if (studentsInCurrentClass >= 20) {
-        currentClassIndex++;
-        studentsInCurrentClass = 0;
+    if (countInClass >= 20 && currentClassIdx < classIds.length - 1) {
+        currentClassIdx++;
+        countInClass = 0;
     }
 
-    // Եթե դասարանները վերջանան (թեև 24 դասարանը քիչ է 475-ի համար), կանգնում ենք կամ լցնում վերջինում
-    const targetClassId = classIds[currentClassIndex] || classIds[classIds.length - 1];
-    
-    insertStudent.run(firstName, lastName, fatherName, targetClassId);
-    studentsInCurrentClass++;
+    insertStudent.run(firstName, lastName, patro, classIds[currentClassIdx]);
+    countInClass++;
 }
 
-// 4. Ավելացնում ենք ադմինին
 db.prepare("INSERT INTO users (username, password) VALUES (?, ?)").run('admin', '123');
-
 module.exports = db;
