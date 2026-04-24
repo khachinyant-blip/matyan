@@ -54,7 +54,6 @@ function wrapHTML(content, title = "Դասերի հաճախումների մատ
     </body></html>`;
 }
 
-// 1. ԿՐԹՈՒԹՅՈՒՆ (ԳԼԽԱՎՈՐ ԷՋ)
 app.get('/', (req, res) => {
     const topics = [
         ["Յուրի Օհանեսյան", "Հայ մեծագույն գիտնական, ում անունով կոչվել է 118-րդ քիմիական տարրը:", "science"],
@@ -63,5 +62,48 @@ app.get('/', (req, res) => {
         ["Արհեստական Բանականություն", "Թվային ապագան և AI-ի ազդեցությունը մեր առօրյայի վրա:", "tech"],
         ["Օվկիանոսի գաղտնիքները", "Ջրային աշխարհի անհայտ խորքերն ու Մարիանյան անդունդը:", "nature"]
     ];
-
     let longTopics = [];
+    for(let i=0; i<50; i++) {
+        let t = topics[i % topics.length];
+        longTopics.push(`<div class="edu-card">
+            <img src="https://picsum.photos/seed/${i+50}/400/250" class="edu-img">
+            <div class="edu-content">
+                <span class="badge">#${i+1} Գիտելիք</span>
+                <h3>${t[0]}</h3>
+                <p>${t[1]} Այս թեման բացահայտում է կարևորագույն փաստեր, որոնք պետք է իմանա յուրաքանչյուր ոք:</p>
+                <button class="btn" style="padding:8px; font-size:12px;">Կարդալ ավելին</button>
+            </div>
+        </div>`);
+    }
+    res.send(wrapHTML(`
+        <div class="card" style="text-align:center;">
+            <h2 style="color:var(--p);"><i class="fa-solid fa-lightbulb"></i> Գիտելիքների շտեմարան</h2>
+            <p>50 հետաքրքիր հոդվածներ ձեր զարգացման համար</p>
+        </div>
+        <div class="edu-grid">${longTopics.join('')}</div>`));
+});
+
+app.get('/attendance', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    const classes = db.prepare("SELECT * FROM classes").all();
+    const subjects = db.prepare("SELECT * FROM subjects").all();
+    const today = new Date().toISOString().split('T')[0];
+    res.send(wrapHTML(`
+        <div class="card">
+            <h3><i class="fa-solid fa-pen-to-square"></i> Օրվա ներկա-բացակա</h3>
+            <form action="/attendance-list" method="GET">
+                <label>Ամսաթիվ</label><input type="date" name="selected_date" value="${today}" required>
+                <label>Դասարան</label>
+                <select name="class_id" id="cls" onchange="f()">
+                    ${classes.map(c => `<option value="${c.id}">${c.name}</option>`)}
+                </select>
+                <label>Առարկա</label><select name="subject_id" id="sbj" required></select>
+                <button class="btn">Բացել ցուցակը</button>
+            </form>
+        </div>
+        <script>
+            const ss = ${JSON.stringify(subjects)};
+            function f() {
+                const c = document.getElementById('cls');
+                const g = parseInt(c.selectedOptions[0].text);
+                let l = g <= 4 ? 'elem' : (g <=
