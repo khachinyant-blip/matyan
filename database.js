@@ -31,7 +31,7 @@ db.exec(`
   );
 `);
 
-// 1. Դասարանների ստեղծում
+// 1. Ստեղծում ենք դասարանները (1Ա-12Բ)
 const insertClass = db.prepare("INSERT INTO classes (name) VALUES (?)");
 const classIds = [];
 for (let i = 1; i <= 12; i++) {
@@ -39,34 +39,41 @@ for (let i = 1; i <= 12; i++) {
     classIds.push(insertClass.run(`${i}Բ`).lastInsertRowid);
 }
 
-// 2. Առարկաներ
+// 2. Ավելացնում ենք հիմնական առարկաները
 const subjectsList = ['Մայրենի', 'Հայոց լեզու', 'Գրականություն', 'Մաթեմատիկա', 'Հանրահաշիվ', 'Երկրաչափություն', 'Անգլերեն', 'Ռուսաց լեզու', 'Ֆիզիկա', 'Քիմիա', 'Կենսաբանություն', 'Հայոց պատմություն', 'Ինֆորմատիկա', 'Ֆիզկուլտուրա', 'ՆԶՊ', 'Շախմատ'];
 const insertSubj = db.prepare("INSERT INTO subjects (name) VALUES (?)");
 subjectsList.forEach(s => insertSubj.run(s));
 
-// 3. 475 Աշակերտների ավտոմատ բաշխում (Այբբենականի համար նախապես սորտավորված)
-const namesM = ['Արամ', 'Բաբկեն', 'Գագիկ', 'Դավիթ', 'Երվանդ', 'Զավեն', 'Էդգար', 'Թորոս', 'Իշխան', 'Լևոն', 'Կարեն', 'Հայկ', 'Միքայել', 'Նարեկ', 'Շանթ', 'Պետրոս', 'Ռուբեն', 'Սամվել', 'Տիգրան', 'Վահե'];
+// 3. Ստեղծում ենք 475 անուն և ՍՈՐՏԱՎՈՐՈՒՄ ենք նախքան դասարանների մեջ դնելը
+const namesM = ['Աբրահամ', 'Բագրատ', 'Գոռ', 'Դավիթ', 'Երվանդ', 'Զավեն', 'Էդգար', 'Թաթուլ', 'Իշխան', 'Լևոն', 'Կարեն', 'Հայկ', 'Միքայել', 'Նարեկ', 'Շանթ', 'Պետրոս', 'Ռուբեն', 'Սամվել', 'Տիգրան', 'Վահե'];
 const namesF = ['Անի', 'Բելլա', 'Գայանե', 'Դիանա', 'Ելենա', 'Զարուհի', 'Էլեն', 'Թամարա', 'Ինեսա', 'Լիլիթ', 'Մարիամ', 'Նանե', 'Շուշան', 'Ոսկեհատ', 'Պայծառ', 'Ռուզաննա', 'Սյուզաննա', 'Տաթևիկ', 'Ուստիան', 'Փիրուզա'];
-const surnames = ['Աբրահամյան', 'Բաղդասարյան', 'Գևորգյան', 'Դավթյան', 'Ենոքյան', 'Զաքարյան', 'Էլիզբարյան', 'Թադևոսյան', 'Իսահակյան', 'Լալայան', 'Խաչատրյան', 'Կարապետյան', 'Հակոբյան', 'Մարգարյան', 'Նալբանդյան', 'Շահնազարյան', 'Ոսկանյան', 'Պետրոսյան', 'Ջանիկյան', 'Սարգսյան', 'Վարդանյան', 'Տերտերյան', 'Փանոսյան', 'Քոչարյան', 'Օհանյան'];
+const surnames = ['Ադամյան', 'Բարսեղյան', 'Գալստյան', 'Դանիելյան', 'Եղիազարյան', 'Զաքարյան', 'Էլբակյան', 'Թորոսյան', 'Իսպիրյան', 'Լուսինյան', 'Խաչատրյան', 'Կարապետյան', 'Հովհաննիսյան', 'Մանուկյան', 'Նալբանդյան', 'Շահինյան', 'Ոսկանյան', 'Պողոսյան', 'Ջանիկյան', 'Սարգսյան', 'Վարդանյան', 'Տերտերյան', 'Փանոսյան', 'Քոչարյան', 'Օհանյան'];
 
-const studentsData = [];
+let tempStudents = [];
 for (let i = 0; i < 475; i++) {
     const isM = Math.random() > 0.5;
-    studentsData.push({
+    tempStudents.push({
         n: isM ? namesM[Math.floor(Math.random() * namesM.length)] : namesF[Math.floor(Math.random() * namesF.length)],
         s: surnames[Math.floor(Math.random() * surnames.length)],
         p: namesM[Math.floor(Math.random() * namesM.length)] + "ի"
     });
 }
-// Սորտավորում ենք ըստ ազգանվան նախքան բազա լցնելը
-studentsData.sort((a, b) => a.s.localeCompare(b.s));
+
+// Խիստ այբբենական սորտավորում ըստ Ազգանվան, հետո Անվան
+tempStudents.sort((a, b) => a.s.localeCompare(b.s, 'hy') || a.n.localeCompare(a.n, 'hy'));
 
 const insertStudent = db.prepare("INSERT INTO students (name, surname, patronymic, class_id) VALUES (?, ?, ?, ?)");
-let cIdx = 0, count = 0;
-studentsData.forEach(st => {
-    if (count >= 20 && cIdx < classIds.length - 1) { cIdx++; count = 0; }
-    insertStudent.run(st.n, st.s, st.p, classIds[cIdx]);
-    count++;
+let classIdx = 0;
+let studentCount = 0;
+
+tempStudents.forEach(st => {
+    // Երբ դասարանում լրանում է 20 հոգի, անցնում ենք հաջորդ դասարանին
+    if (studentCount >= 20 && classIdx < classIds.length - 1) {
+        classIdx++;
+        studentCount = 0;
+    }
+    insertStudent.run(st.n, st.s, st.p, classIds[classIdx]);
+    studentCount++;
 });
 
 db.prepare("INSERT INTO users (username, password) VALUES (?, ?)").run('admin', '123');
