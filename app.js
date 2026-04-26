@@ -176,4 +176,24 @@ app.get('/stats', (req, res) => {
         table = students.map(s => {
             const sAtt = att.filter(a => a.student_id === s.id);
             let s1 = 0, s2 = 0;
-            sAtt.forEach(a => { const m = new Date(a.date).getMonth()+1; if(m>=9 || m<=1
+            sAtt.forEach(a => { const m = new Date(a.date).getMonth()+1; if(m>=9 || m<=12) s1++; else s2++; });
+            return `<tr><td><b>${s.surname}</b> ${s.name} ${s.patronymic}</td><td>${s1}</td><td>${s2}</td><td><b>${s1+s2}</b></td></tr>`;
+        }).join('');
+    }
+    res.send(wrapHTML(`<div class="card"><h3><i class="fa-solid fa-chart-simple"></i> Վիճակագրություն</h3><form action="/stats" method="GET"><select name="class_id" onchange="this.form.submit()" style="width:100%; padding:10px; border-radius:10px;">
+        <option value="">--- Ընտրեք դասարանը ---</option>${classes.map(c => `<option value="${c.id}" ${classId==c.id?'selected':''}>${c.name}</option>`)}</select></form>
+        ${classId ? `<table><thead><tr><th>Աշակերտ</th><th>1-ին</th><th>2-րդ</th><th>Ընդհ.</th></tr></thead><tbody>${table}</tbody></table><form action="/delete-stats" method="POST"><input type="hidden" name="class_id" value="${classId}"><button class="btn" style="background:#ff7675; margin-top:15px;">Ջնջել</button></form>` : ''}</div>`));
+});
+
+app.post('/delete-stats', (req, res) => { db.prepare("DELETE FROM attendance WHERE student_id IN (SELECT id FROM students WHERE class_id = ?)").run(req.body.class_id); res.redirect('/stats'); });
+
+// 6. ԲԱԶԱ (Հայրանուններով)
+app.get('/all-students', (req, res) => {
+    const s = db.prepare("SELECT s.*, c.name as cn FROM students s JOIN classes c ON s.class_id=c.id ORDER BY cn, s.surname").all();
+    res.send(wrapHTML(`<div class="card"><h3><i class="fa-solid fa-database"></i> Բազա</h3><p style="font-size: 24px;">🗂️</p><table>${s.map(i => `<tr><td><span class="badge">${i.cn}</span></td><td>${i.surname} ${i.name} ${i.patronymic}</td></tr>`).join('')}</table></div>`));
+});
+
+app.get('/login', (req, res) => res.send(wrapHTML(`<div class="card"><h2>Մուտք</h2><form action="/login" method="POST"><input name="u" placeholder="Admin" style="width:100%; padding:10px; margin-bottom:10px;"><input type="password" name="p" placeholder="123" style="width:100%; padding:10px;"><button class="btn">Մտնել</button></form></div>`)));
+app.post('/login', (req, res) => { if(req.body.u==='admin' && req.body.p==='123') { req.session.user='admin'; res.redirect('/attendance'); } else res.send("Սխալ"); });
+
+app.listen(process.env.PORT || 3000);
